@@ -1,0 +1,186 @@
+<html>
+<head>
+  <title>Izposoja potrebščin</title>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 0;
+      background: linear-gradient(to bottom, black, rgb(217, 91, 12));
+    }
+
+    /* canvas ozadje */
+    #bg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;          /* ZA formo */
+      pointer-events: none;
+    }
+
+    /* forma naj bo nad canvasom */
+    .form-box {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  padding: 28px;
+  border-radius: 16px;
+
+  background: rgba(25, 25, 25, 0.85);   /* temno siv pravokotnik */
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45); /* senca */
+  backdrop-filter: blur(4px);           /* “glass” efekt (optional, ampak lep) */
+}
+
+  </style>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+</head>
+
+<body>
+  <canvas id="bg"></canvas>
+
+  <form class="form-box" action="TVOJ_MAKE_WEBHOOK" method="post">
+    <h1 class="h3 mb-3 fw-normal text-white">Izposoja potrebščin</h1>
+
+    <div class="form-floating mb-3">
+      <input name="ime" type="text" class="form-control" id="ime" placeholder="Ime" required>
+      <label for="ime">Ime</label>
+    </div>
+
+    <div class="form-floating mb-3">
+      <input name="email" type="email" class="form-control" id="email" placeholder="name@example.com" required>
+      <label for="email">Email</label>
+    </div>
+
+    <div class="form-floating mb-3">
+      <input name="potrebscina" type="text" class="form-control" id="potrebscina" placeholder="Kalkulator #11" required>
+      <label for="potrebscina">Potrebščina</label>
+    </div>
+
+    <div class="mt-3 mb-3">
+      <div class="d-flex gap-3">
+        <input type="radio" class="btn-check" name="akcija" id="izposojam" value="izposojam" autocomplete="off" required>
+        <label class="btn btn-outline-primary flex-fill text-center" for="izposojam">Izposojam</label>
+
+        <input type="radio" class="btn-check" name="akcija" id="vracam" value="vracam" autocomplete="off">
+        <label class="btn btn-outline-primary flex-fill text-center" for="vracam">Vračam</label>
+      </div>
+    </div>
+
+    <button class="btn btn-primary w-100 py-2" type="submit">Vnesi</button>
+  </form>
+
+  <script>
+  (() => {
+    const canvas = document.getElementById("bg");
+    const ctx = canvas.getContext("2d");
+
+    let w, h, dpr;
+    function resize(){
+      dpr = window.devicePixelRatio || 1;
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    const mouse = { x: w/2, y: h/2, active: false };
+
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouse.active = true;
+    });
+    window.addEventListener("mouseleave", () => mouse.active = false);
+
+    const particles = [];
+    const COUNT = Math.min(120, Math.floor((window.innerWidth * window.innerHeight) / 15000));
+    const MAX_DIST = 130;
+
+    function rand(min, max){ return Math.random() * (max - min) + min; }
+
+    for (let i=0; i<COUNT; i++){
+      particles.push({
+        x: rand(0, w),
+        y: rand(0, h),
+        vx: rand(-0.4, 0.4),
+        vy: rand(-0.4, 0.4),
+        r: rand(1, 2.2)
+      });
+    }
+
+    function step(){
+      ctx.clearRect(0,0,w,h);
+
+      ctx.fillStyle = "rgba(0,0,0,0.08)";
+      ctx.fillRect(0,0,w,h);
+
+      for (const p of particles){
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = w;
+        if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h;
+        if (p.y > h) p.y = 0;
+      }
+
+      for (let i=0; i<particles.length; i++){
+        for (let j=i+1; j<particles.length; j++){
+          const a = particles[i], b = particles[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < MAX_DIST){
+            const alpha = 1 - (dist / MAX_DIST);
+            ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.55})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      if (mouse.active){
+        for (const p of particles){
+          const dx = p.x - mouse.x, dy = p.y - mouse.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < MAX_DIST){
+            const alpha = 1 - (dist / MAX_DIST);
+            ctx.strokeStyle = `rgba(255,160,255,${alpha * 0.6})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (const p of particles){
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      requestAnimationFrame(step);
+    }
+
+    step();
+  })();
+  </script>
+</body>
+</html>
